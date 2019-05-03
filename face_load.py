@@ -26,6 +26,7 @@ while True:
 
     frame = cv2.flip(frame, -1)
 
+    # Rotate 180
     height, width, channel = frame.shape
     matrix = cv2.getRotationMatrix2D((width/2, height/2), 180, 1)
     frame = cv2.warpAffine(frame, matrix, (width, height))
@@ -47,16 +48,16 @@ while True:
             p1 = (int(TrackingROI[0]), int(TrackingROI[1]))
             p2 = (int(TrackingROI[0] + TrackingROI[2]), int(TrackingROI[1] + TrackingROI[3]))
             cv2.rectangle(frame, p1, p2, (0,255,0), thickness=8)
+
+            #Face Detect new KCF
             tracker = cv2.TrackerKCF_create()
             tracker.init(frame,TrackingROI)
             tracking_trigger = 1
     else:
         search, TrackingROI = tracker.update(frame)
         if search:
-            #추적 성공했다면
             p1 = (int(TrackingROI[0]), int(TrackingROI[1]))
             p2 = (int(TrackingROI[0] + TrackingROI[2]), int(TrackingROI[1] + TrackingROI[3]))
-            #화면에 박스로 표시 (파랑)
             cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
             print('success x %d ' % (int(TrackingROI[0])) + 'y %d ' % (int(TrackingROI[1])) +'w %d ' % (int(TrackingROI[2])) + 'h %d ' % (int(TrackingROI[3])))
         else:
