@@ -1,17 +1,24 @@
 import cv2
 import os
 import sys
+import serial
+from operator import eq
 
+#Camera Config
+width = 1280
+height = 720
 
-
+# center range Config
+center_value= 50
+center_range = ((width/2)-center_value,(width/2)+center_value);
 # cascade_file = "/Document/Project/face_cascade.xml"
 cascade_file = "/usr/local/Cellar/opencv/4.1.0_1/share/opencv4/haarcascades/haarcascade_frontalface_default.xml"
 # 얼굴 인식 특징 파일 읽어 들이기
 cascade = cv2.CascadeClassifier(cascade_file)
 
 capture = cv2.VideoCapture(0)
-capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
 #Tracking 저장
 TrackingROI = (0,0,0,0)
@@ -22,6 +29,26 @@ TrackingROI = (0,0,0,0)
 # 1 : Tracking Face 
 # #
 tracking_trigger = 0
+
+class Serial_Arduino: 
+    #Serial Config
+    port = '/dev/cu.usbmodem14201'
+    baudrate = 115200
+    con = serial.Serial(port,baudrate)
+
+    def __init__(self):
+        self.value = "log"
+
+    def serial_insert(self,value):
+        if eq(self.value, value):
+            self.value = value
+            # print("same")
+        else:
+            print("[Serial] "+value)
+            self.con.write(value.encode())
+            self.value = value
+
+seri = Serial_Arduino()
 
 while True:
     ret, frame = capture.read()
@@ -60,17 +87,34 @@ while True:
         if search:
             p1 = (int(TrackingROI[0]), int(TrackingROI[1]))
             p2 = (int(TrackingROI[0] + TrackingROI[2]), int(TrackingROI[1] + TrackingROI[3]))
-            cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
-            print('success x %d ' % (int(TrackingROI[0])) + 'y %d ' % (int(TrackingROI[1])) +'w %d ' % (int(TrackingROI[2])) + 'h %d ' % (int(TrackingROI[3])))
+            
+            cv2.rectangle(frame, p1, p2, (0,0,255), 2, 1)
+
+            center = ((p2[0]-p1[0])/2)+p1[0]
+            
+            if (center_range[0] <= center <= center_range[1]):
+                seri.serial_insert('c,0')
+                # print("c,0")
+            
+            elif(center_range[0]>center):
+                seri.serial_insert('b,0')
+                # print("b,0")
+            
+            elif(center_range[1]<center):
+                seri.serial_insert('a,0')
+                # print("a,0")
+
+            
+            cv2.circle(frame, (int(center), 0), 3, (100,0,0), 2)
+
+            # print('success x %d ' % (int(TrackingROI[0])) + 'y %d ' % (int(TrackingROI[1])) +'w %d ' % (int(TrackingROI[2])) + 'h %d ' % (int(TrackingROI[3])))
         else:
+            # cv2.putText(frame, 'Tracking failed', (0,0), cv2.FONT_HERSHEY_SIMPLEX, 4, (255,255,255), 2)
             print('Tracking failed')
             tracking_trigger = 0
-     
-    # color = (0, 0, 255)
-    # for face in face_list:
-    #     x, y, w, h = face
-    #     cv2.rectangle(frame, (x, y), (x+w, y+h), color, thickness=8)
-        
+   
+
+    cv2.line(frame,(int(width/2),0),(int(width/2),int(height)),(0,255,10),3)
     cv2.imshow("VideoFrame", frame)
     if cv2.waitKey(1) > 0:
         break
@@ -78,3 +122,7 @@ while True:
 
 capture.release()
 cv2.destroyAllWindows()
+    
+
+    
+
